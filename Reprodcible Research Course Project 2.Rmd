@@ -87,44 +87,25 @@ ggplot(sumph[1:5, ], aes(x = EVTYPE, y = total))+
 ### Processing economic consequences related data 
 ```{r}
 stormec <- select(stormdata, EVTYPE, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+stormec$PROPDMGEXP <- as.character(stormec$PROPDMGEXP)
+stormec$PROPDMGEXP[is.na(stormec$PROPDMGEXP)] <- 0 
+stormec$PROPDMGEXP[!grepl("K|M|B", stormec$PROPDMGEXP, ignore.case = TRUE)] <- 0 
+stormec$PROPDMGEXP[grep("K", stormec$PROPDMGEXP, ignore.case = TRUE)] <- "3"
+stormec$PROPDMGEXP[grep("M", stormec$PROPDMGEXP, ignore.case = TRUE)] <- "6"
+stormec$PROPDMGEXP[grep("B", stormec$PROPDMGEXP, ignore.case = TRUE)] <- "9"
+stormec$PROPDMGEXP <- as.numeric(as.character(stormec$PROPDMGEXP))
+stormec$property.damage <- stormec$PROPDMG * 10^stormec$PROPDMGEXP
 
-symbols <- c("H","h","K","k","M","m","B","b","+","-","?",
-             "0","1","2","3","4","5","6","7","8","9")
-nums <- c(10^2, 10^2, 10^3, 10^3, 10^6, 10^6, 10^9, 10^9, 0, 0, 0, 
-          10^0,10^1, 10^2, 10^3, 10^4, 10^5, 10^6, 10^7, 10^8, 10^9)
-table <- data.frame(symbols, nums)
-
-sumec <- stormec[rowSums(stormec == 0) == 0, ]
-
-convert <- function(x , y){
-        if(is.na(x)){
-                return(x)
-        }
-                x <- y
-        }
-      
-for(i in 1:nrow(sumec)){
-        if(sumec[i, 3] %in% table$symbols){
-                sumec[i, 3] <- convert(sumec[i, 3], table[i,]$nums)
-        }
-}
-
-for(i in 1:nrow(sumec)){
-        if(sumec[i, 5] %in% table$symbols){
-                sumec[i, 5] <- convert(sumec[i, 5], table[i,]$nums)
-        }
-}
-
-as.numeric(sumec$PROPDMG)
-as.numeric(sumec$PROPDMGEXP)
-as.numeric(sumec$CROPDMG)
-as.numeric(sumec$CROPDMGEXP)
-finalec <- transform(sumec, total = PROPDMG+ PROPDMGEXP+ CROPDMG+ CROPDMGEXP)
-
-finalec <- aggregate(.~EVTYPE, sumec, sum, na.rm = TRUE)
+stormec$CROPDMGEXP <- as.character(stormec$CROPDMGEXP)
+stormec$CROPDMGEXP[is.na(stormec$CROPDMGEXP)] <- 0 
+stormec$CROPDMGEXP[!grepl("K|M|B", stormec$CROPDMGEXP, ignore.case = TRUE)] <- 0 
+stormec$CROPDMGEXP[grep("K", stormec$CROPDMGEXP, ignore.case = TRUE)] <- "3"
+stormec$CROPDMGEXP[grep("M", stormec$CROPDMGEXP, ignore.case = TRUE)] <- "6"
+stormec$CROPDMGEXP[grep("B", stormec$CROPDMGEXP, ignore.case = TRUE)] <- "9"
+stormec$CROPDMGEXP <- as.numeric(as.character(stormec$CROPDMGEXP))
+stormec$crop.damage <- stormec$CROPDMG * 10^stormec$CROPDMGEXP
 
 
-#sumec <- aggregate(total ~ EVTYPE, sumec, sum, na.rm = TRUE)
 ```
 
 ### Plotting for economic consequences related data 
