@@ -2,6 +2,7 @@
 title: "Reproducible Research Course Project 2"
 author: "Yigang"
 output: html_document
+keep_md: true
 ---
 
 ## Introduction
@@ -44,11 +45,11 @@ Analysis the storm data set from NOAA, and explore the types of events are most 
 
 ### Goal setting
 ```{r echo = TRUE}
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
 library("data.table")
 library("ggplot2")
-library("dplyr")
 library("plyr") 
+library("dplyr")
 ```
 
 
@@ -56,8 +57,9 @@ library("plyr")
 
 ```{r}
 url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
-download.file(url, "stormdata.csv.bz2")
-stormdata <- read.csv("stormdata.csv.bz2") 
+path <- getwd()
+download.file(url,  paste(path, "/StormData.csv.bz", sep = ""))
+stormdata <- read.csv("StormData.csv.bz2")
 ```
 
 ### filtering data
@@ -84,6 +86,10 @@ ggplot(sumph[1:5, ], aes(x = EVTYPE, y = total))+
         ylab("Population of fatalities and injuries")
 ```
 
+## Conculsion 1
+
+- Across the United States, tornado is the most harmful with respect to population health.
+
 ### Processing economic consequences related data 
 ```{r}
 stormec <- select(stormdata, EVTYPE, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
@@ -94,7 +100,7 @@ stormec$PROPDMGEXP[grep("K", stormec$PROPDMGEXP, ignore.case = TRUE)] <- "3"
 stormec$PROPDMGEXP[grep("M", stormec$PROPDMGEXP, ignore.case = TRUE)] <- "6"
 stormec$PROPDMGEXP[grep("B", stormec$PROPDMGEXP, ignore.case = TRUE)] <- "9"
 stormec$PROPDMGEXP <- as.numeric(as.character(stormec$PROPDMGEXP))
-stormec$property.damage <- stormec$PROPDMG * 10^stormec$PROPDMGEXP
+stormec$propcost <- stormec$PROPDMG * 10^stormec$PROPDMGEXP
 
 stormec$CROPDMGEXP <- as.character(stormec$CROPDMGEXP)
 stormec$CROPDMGEXP[is.na(stormec$CROPDMGEXP)] <- 0 
@@ -103,17 +109,20 @@ stormec$CROPDMGEXP[grep("K", stormec$CROPDMGEXP, ignore.case = TRUE)] <- "3"
 stormec$CROPDMGEXP[grep("M", stormec$CROPDMGEXP, ignore.case = TRUE)] <- "6"
 stormec$CROPDMGEXP[grep("B", stormec$CROPDMGEXP, ignore.case = TRUE)] <- "9"
 stormec$CROPDMGEXP <- as.numeric(as.character(stormec$CROPDMGEXP))
-stormec$crop.damage <- stormec$CROPDMG * 10^stormec$CROPDMGEXP
+stormec$cropcost <- stormec$CROPDMG * 10^stormec$CROPDMGEXP
 
-
+totalcost <-ddply(stormec, .(EVTYPE), summarize, total=sum(propcost+cropcost))  
 ```
 
 ### Plotting for economic consequences related data 
 ```{r}
-finalec <- finalec[order(-finalec$total), ]
-ggplot(finalec[1:5, ], aes(x = reorder(EVTYPE, -total), y = total))+
+totalcost <- totalcost[order(-totalcost$total), ]
+ggplot(totalcost[1:5, ], aes(x = reorder(EVTYPE, -total), y = total))+
         geom_bar(stat = "identity") +
         xlab("Event type")+
-        ylab("Population of fatalities and injuries")
+        ylab("Ecomomic Damage")
 ```
 
+## Conclusion 2
+
+- Across the United States, flood and hurricane/typhoon have the greatest economic consequences.
