@@ -1,0 +1,138 @@
+---
+title: "Reproducible Research Course Project 2"
+author: "Yigang"
+output: html_document
+---
+
+## Introduction
+
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+## Data
+
+The data for this assignment come in the form of a comma-separated-value file compressed via the bzip2 algorithm to reduce its size. You can download the file from the course web site:
+
+- [Storm Data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2)  
+
+There is also some documentation of the database available. Here you will find how some of the variables are constructed/defined.
+
+- National Weather Service [Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)  
+
+- National Climatic Data Center Storm Events [FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)  
+
+The events in the database start in the year 1950 and end in November 2011. In the earlier years of the database there are generally fewer events recorded, most likely due to a lack of good records. More recent years should be considered more complete.
+
+## Assignment
+
+The basic goal of this assignment is to explore the NOAA Storm Database and answer some basic questions about severe weather events. You must use the database to answer the questions below and show the code for your entire analysis. Your analysis can consist of tables, figures, or other summaries. You may use any R package you want to support your analysis.
+
+### Questions
+Your data analysis must address the following questions:
+
+1. Across the United States, which types of events are most harmful with respect to population health?
+2. Across the United States, which types of events have the greatest economic consequences?
+
+Consider writing your report as if it were to be read by a government or municipal manager who might be responsible for preparing for severe weather events and will need to prioritize resources for different types of events. However, there is no need to make any specific recommendations in your report.
+
+## Synopsis
+
+Analysis the storm data set from NOAA, and explore the types of events are most harmful with respect to population health and the types of events have the greatest economic consequences across the Uinted States.
+
+## Data Processing
+
+### Goal setting
+```{r echo = TRUE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+library("data.table")
+library("ggplot2")
+library("dplyr")
+library("plyr") 
+```
+
+
+### Getting and loading data
+
+```{r}
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+download.file(url, "stormdata.csv.bz2")
+stormdata <- read.csv("stormdata.csv.bz2") 
+```
+
+### filtering data
+
+```{r}
+cols <- c( "EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP")
+stormdata <- stormdata[ ,cols]
+```
+
+### Processing population health related data 
+```{r}
+stormph <- select(stormdata,EVTYPE, FATALITIES,INJURIES)
+sumph <- transform(stormph, total = FATALITIES + INJURIES)
+sumph <- aggregate(total ~ EVTYPE, sumph, sum, na.rm = TRUE)
+sumph <- sumph[rowSums(sumph == 0) == 0, ]
+```
+
+### Plotting for population health related data 
+```{r}
+sumph <- sumph[order(-sumph$total), ]
+ggplot(sumph[1:5, ], aes(x = EVTYPE, y = total))+
+        geom_bar(stat = "identity") +
+        xlab("Event type")+
+        ylab("Population of fatalities and injuries")
+```
+
+### Processing economic consequences related data 
+```{r}
+stormec <- select(stormdata, EVTYPE, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+
+symbols <- c("H","h","K","k","M","m","B","b","+","-","?",
+             "0","1","2","3","4","5","6","7","8","9")
+nums <- c(10^2, 10^2, 10^3, 10^3, 10^6, 10^6, 10^9, 10^9, 0, 0, 0, 
+          10^0,10^1, 10^2, 10^3, 10^4, 10^5, 10^6, 10^7, 10^8, 10^9)
+table <- data.frame(symbols, nums)
+
+sumec <- stormec[rowSums(stormec == 0) == 0, ]
+
+convert <- function(x , y){
+        if(is.na(x)){
+                return(x)
+        }
+                x <- y
+        }
+      
+for(i in 1:nrow(sumec)){
+        if(sumec[i, 3] %in% table$symbols){
+                sumec[i, 3] <- convert(sumec[i, 3], table[i,]$nums)
+        }
+}
+
+for(i in 1:nrow(sumec)){
+        if(sumec[i, 5] %in% table$symbols){
+                sumec[i, 5] <- convert(sumec[i, 5], table[i,]$nums)
+        }
+}
+
+as.numeric(sumec$PROPDMG)
+as.numeric(sumec$PROPDMGEXP)
+as.numeric(sumec$CROPDMG)
+as.numeric(sumec$CROPDMGEXP)
+finalec <- transform(sumec, total = PROPDMG+ PROPDMGEXP+ CROPDMG+ CROPDMGEXP)
+
+finalec <- aggregate(.~EVTYPE, sumec, sum, na.rm = TRUE)
+
+
+#sumec <- aggregate(total ~ EVTYPE, sumec, sum, na.rm = TRUE)
+```
+
+### Plotting for economic consequences related data 
+```{r}
+finalec <- finalec[order(-finalec$total), ]
+ggplot(finalec[1:5, ], aes(x = reorder(EVTYPE, -total), y = total))+
+        geom_bar(stat = "identity") +
+        xlab("Event type")+
+        ylab("Population of fatalities and injuries")
+```
+
